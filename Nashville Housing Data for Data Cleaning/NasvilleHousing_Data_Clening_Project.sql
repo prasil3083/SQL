@@ -1,4 +1,6 @@
+---------------------------------------------------------------------------------------------------------------------------------
 -- Standarize Data Format
+---------------------------------------------------------------------------------------------------------------------------------
 
 UPDATE NashvilleHousing
 SET SaleDate = CONVERT(DATE , SaleDate)
@@ -12,8 +14,9 @@ SET SaleDateConverted = CONVERT(DATE , SaleDate)
 SELECT SaleDateConverted FROM
 Project.dbo.NashvilleHousing
 
--------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------
 -- Populate Property Address data
+---------------------------------------------------------------------------------------------------------------------------------
 
 SELECT PropertyAddress , ParcelID , count(PropertyAddress) OVER (PARTITION BY PropertyAddress) as TOTal_count
 FROM Project.dbo.NashvilleHousing
@@ -35,8 +38,10 @@ ON A.ParcelID = B.ParcelID
 AND A.[UniqueID] <> B.[UniqueID]
 WHERE A.PropertyAddress IS NULL
 
-------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------------------------------------
 --Breaking Out Address into individual columns (Address, City , State)
+---------------------------------------------------------------------------------------------------------------------------------
 
 --Split PropertyAddress
 SELECT PropertyAddress
@@ -120,9 +125,10 @@ SET OwnerSplitAddress = PARSENAME(REPLACE(OwnerAddress,',','.'), 3),
 	OwnerSplitCity = PARSENAME(REPLACE(OwnerAddress,',','.'), 2),
 	OwnerSplitState = PARSENAME(REPLACE(OwnerAddress,',','.'), 1)
 
--------------------------------------------------------------------------------------------------------------------
 
+---------------------------------------------------------------------------------------------------------------------------------
 -- Change Y and N to Yes and No in 'Sold as Vacant' field
+---------------------------------------------------------------------------------------------------------------------------------
 
 --Give the count of Y, N, Yes, No in the Sold as Vacant columns
 SELECT DISTINCT(SoldAsVacant) , COUNT(SoldAsVacant)
@@ -138,5 +144,40 @@ SET SoldAsVacant = CASE WHEN SoldAsVacant = 'Y' THEN 'Yes'
 						END
 
 
--------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------
 --REMOVE DUPLICATE
+---------------------------------------------------------------------------------------------------------------------------------
+
+WITH RowNumCTE AS(
+SELECT *,
+		ROW_NUMBER() OVER(
+		PARTITION BY  ParcelID,
+		PropertyAddress,
+		SalePrice,
+		SaleDate,
+		LegalReference
+		ORDER BY 
+		UniqueID) AS row_num
+FROM Project.dbo.NashvilleHousing
+)
+--DELETE the Duplicae rows contang same info in PropertyAddress, SalePrice, SaleDate, LegalReference
+DELETE
+FROM RowNumCTE
+WHERE row_num > 1
+
+--Check if there's any Duplicate rows contaning the same info in PropertyAddress, SalePrice, SaleDate, LegalReference
+--SELECT * 
+--FROM RowNumCTE
+--WHERE row_num > 1
+--ORDER BY PropertyAddress
+
+
+---------------------------------------------------------------------------------------------------------------------------------
+--Delete Unused Columns
+---------------------------------------------------------------------------------------------------------------------------------
+
+SELECT *
+FROM Project.dbo.NashvilleHousing
+
+ALTER TABLE Project.dbo.NashvilleHousing
+DROP COLUMN OwnerAddress, TaxDistrict, PropertyAddress, SaleDate
